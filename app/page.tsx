@@ -5,8 +5,12 @@ export default function Home() {
   const [githubUsername, setGithubUsername] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
+  
+  // NEW: State to track if the PDF is currently downloading
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleAnalyze = async () => {
     if (!resumeFile) {
@@ -42,6 +46,51 @@ export default function Home() {
       alert("Uh oh! Could not reach the backend. Is your Python server running on port 8000?");
     } finally {
       setIsLoading(false); 
+    }
+  };
+
+  // NEW: The function that asks the backend for the PDF and downloads it
+  const handleDownloadPDF = async () => {
+    if (!results) return;
+    
+    setIsDownloading(true);
+    try {
+      // 1. Send the current results to the backend PDF generator
+      const response = await fetch("http://localhost:8000/api/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // We pack the data exactly how your Python pdf_generator expects it!
+        body: JSON.stringify({
+          github_username: githubUsername,
+          ats_score: results.resume_metrics?.ats_score || 0,
+          semantic_score: results.resume_metrics?.semantic_score || 0,
+          matched_skills: results.resume_metrics?.matched_skills || [],
+          missing_skills: results.resume_metrics?.missing_skills || [],
+          ai_scorecard: results.resume_metrics?.ai_scorecard || "No scorecard generated."
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      // 2. Convert the backend response into a downloadable file in the browser
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${githubUsername || "Candidate"}_AI_Scorecard.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF Download Error:", error);
+      alert("Could not download the PDF. Make sure your Python backend is running!");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -120,9 +169,23 @@ export default function Home() {
         {/* --- DYNAMIC RESULTS SECTION --- */}
         {results && (
           <div className="bg-white shadow-2xl rounded-2xl p-8 border border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-8 border-b pb-4">
-              Evaluation Results 🎯
-            </h2>
+            
+            {/* NEW: Added a Flexbox header to align the Title and the Download Button */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
+              <h2 className="text-3xl font-extrabold text-gray-900">
+                Evaluation Results 🎯
+              </h2>
+              
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className={`flex items-center gap-2 py-2 px-4 rounded-lg font-bold text-white shadow-sm transition-all ${
+                  isDownloading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-800 hover:bg-gray-900 hover:shadow-md"
+                }`}
+              >
+                {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
+              </button>
+            </div>
 
             {/* Scores Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
