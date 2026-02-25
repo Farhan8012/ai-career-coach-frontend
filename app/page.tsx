@@ -8,8 +8,6 @@ export default function Home() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
-  
-  // NEW: State to track if the PDF is currently downloading
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleAnalyze = async () => {
@@ -49,19 +47,16 @@ export default function Home() {
     }
   };
 
-  // NEW: The function that asks the backend for the PDF and downloads it
   const handleDownloadPDF = async () => {
     if (!results) return;
     
     setIsDownloading(true);
     try {
-      // 1. Send the current results to the backend PDF generator
       const response = await fetch("http://localhost:8000/api/generate-pdf", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // We pack the data exactly how your Python pdf_generator expects it!
         body: JSON.stringify({
           github_username: githubUsername,
           ats_score: results.resume_metrics?.ats_score || 0,
@@ -74,7 +69,6 @@ export default function Home() {
 
       if (!response.ok) throw new Error("Failed to generate PDF");
 
-      // 2. Convert the backend response into a downloadable file in the browser
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -83,7 +77,6 @@ export default function Home() {
       document.body.appendChild(a);
       a.click();
       
-      // Cleanup
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -111,7 +104,6 @@ export default function Home() {
         {/* --- MAIN INPUT CARD --- */}
         <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100">
           <form className="space-y-6">
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -162,7 +154,6 @@ export default function Home() {
             >
               {isLoading ? "🧠 Analyzing Profile..." : "Analyze Profile ✨"}
             </button>
-            
           </form>
         </div>
 
@@ -170,7 +161,6 @@ export default function Home() {
         {results && (
           <div className="bg-white shadow-2xl rounded-2xl p-8 border border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
-            {/* NEW: Added a Flexbox header to align the Title and the Download Button */}
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
               <h2 className="text-3xl font-extrabold text-gray-900">
                 Evaluation Results 🎯
@@ -236,6 +226,37 @@ export default function Home() {
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {results.resume_metrics?.ai_scorecard || "No scorecard generated."}
               </p>
+            </div>
+
+            {/* --- NEW: GITHUB METRICS SECTION --- */}
+            <div className="mt-12 pt-10 border-t border-gray-200">
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
+                GitHub Profile Analysis 🐙
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
+                  <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
+                  <span className="text-6xl font-black text-white mt-3">
+                    {results.github_metrics?.total_repos !== undefined ? results.github_metrics.total_repos : "N/A"}
+                  </span>
+                </div>
+
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
+                  <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Top Languages</span>
+                  <div className="flex flex-wrap justify-center gap-2 mt-4">
+                    {results.github_metrics?.top_languages?.length > 0 ? (
+                      results.github_metrics.top_languages.map((lang: string, idx: number) => (
+                        <span key={idx} className="px-4 py-1.5 bg-gray-800 text-blue-400 rounded-full text-sm font-bold border border-gray-700">
+                          {lang}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 italic mt-2">No top languages found</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>
