@@ -10,6 +10,10 @@ export default function Home() {
   const [results, setResults] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // NEW: States for the Cover Letter feature
+  const [coverLetter, setCoverLetter] = useState<string | null>(null);
+  const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
+
   const handleAnalyze = async () => {
     if (!resumeFile) {
       alert("Please upload a PDF resume first! 📄");
@@ -18,6 +22,7 @@ export default function Home() {
 
     setIsLoading(true);
     setResults(null); 
+    setCoverLetter(null); // Clear old cover letters on new scan
 
     try {
       const formData = new FormData();
@@ -31,7 +36,6 @@ export default function Home() {
       });
 
       const data = await response.json();
-      console.log("🔥 THE AI HAS SPOKEN:", data);
       
       if (data.status === "success") {
         setResults(data.candidate_evaluation);
@@ -54,9 +58,7 @@ export default function Home() {
     try {
       const response = await fetch("http://localhost:8000/api/generate-pdf", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           github_username: githubUsername,
           ats_score: results.resume_metrics?.ats_score || 0,
@@ -81,9 +83,42 @@ export default function Home() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("PDF Download Error:", error);
-      alert("Could not download the PDF. Make sure your Python backend is running!");
+      alert("Could not download the PDF.");
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  // NEW: Function to ask the backend for a tailored cover letter
+  const handleGenerateCoverLetter = async () => {
+    if (!resumeFile || !jobDescription) {
+      alert("Please ensure both the resume and job description are provided!");
+      return;
+    }
+
+    setIsGeneratingLetter(true);
+    try {
+      const formData = new FormData();
+      formData.append("job_description", jobDescription);
+      formData.append("resume", resumeFile);
+
+      const response = await fetch("http://localhost:8000/api/cover-letter", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        setCoverLetter(data.cover_letter);
+      } else {
+        alert("Backend returned an error: " + data.message);
+      }
+    } catch (error) {
+      console.error("Cover Letter Error:", error);
+      alert("Could not generate the cover letter. Check your backend!");
+    } finally {
+      setIsGeneratingLetter(false);
     }
   };
 
@@ -228,7 +263,7 @@ export default function Home() {
               </p>
             </div>
 
-            {/* --- NEW: GITHUB METRICS SECTION --- */}
+            {/* GITHUB METRICS SECTION */}
             <div className="mt-12 pt-10 border-t border-gray-200">
               <h2 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
                 GitHub Profile Analysis 🐙
@@ -257,6 +292,35 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* --- NEW: COVER LETTER SECTION --- */}
+            <div className="mt-12 pt-10 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <h2 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+                  Auto-Draft Cover Letter ✉️
+                </h2>
+                <button
+                  onClick={handleGenerateCoverLetter}
+                  disabled={isGeneratingLetter}
+                  className={`py-2 px-6 rounded-lg font-bold text-white shadow-sm transition-all ${
+                    isGeneratingLetter ? "bg-purple-400 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-700 hover:shadow-md"
+                  }`}
+                >
+                  {isGeneratingLetter ? "✍️ Drafting..." : "Generate Cover Letter"}
+                </button>
+              </div>
+
+              {coverLetter && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                  <textarea
+                    className="w-full h-96 p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-gray-800 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y"
+                    value={coverLetter}
+                    onChange={(e) => setCoverLetter(e.target.value)}
+                  />
+                  <p className="text-sm text-gray-500 mt-2 text-right">Feel free to edit the text directly before copying!</p>
+                </div>
+              )}
             </div>
 
           </div>
