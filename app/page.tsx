@@ -10,9 +10,12 @@ export default function Home() {
   const [results, setResults] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // NEW: States for the Cover Letter feature
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
+
+  // NEW: States for the Study Plan feature
+  const [studyPlan, setStudyPlan] = useState<string | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
   const handleAnalyze = async () => {
     if (!resumeFile) {
@@ -22,7 +25,8 @@ export default function Home() {
 
     setIsLoading(true);
     setResults(null); 
-    setCoverLetter(null); // Clear old cover letters on new scan
+    setCoverLetter(null); 
+    setStudyPlan(null); // Clear old study plan
 
     try {
       const formData = new FormData();
@@ -42,7 +46,6 @@ export default function Home() {
       } else {
         alert("Backend returned an error: " + data.message);
       }
-
     } catch (error) {
       console.error("Bridge Error:", error);
       alert("Uh oh! Could not reach the backend. Is your Python server running on port 8000?");
@@ -53,7 +56,6 @@ export default function Home() {
 
   const handleDownloadPDF = async () => {
     if (!results) return;
-    
     setIsDownloading(true);
     try {
       const response = await fetch("http://localhost:8000/api/generate-pdf", {
@@ -78,7 +80,6 @@ export default function Home() {
       a.download = `${githubUsername || "Candidate"}_AI_Scorecard.pdf`;
       document.body.appendChild(a);
       a.click();
-      
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -89,13 +90,8 @@ export default function Home() {
     }
   };
 
-  // NEW: Function to ask the backend for a tailored cover letter
   const handleGenerateCoverLetter = async () => {
-    if (!resumeFile || !jobDescription) {
-      alert("Please ensure both the resume and job description are provided!");
-      return;
-    }
-
+    if (!resumeFile || !jobDescription) return;
     setIsGeneratingLetter(true);
     try {
       const formData = new FormData();
@@ -108,17 +104,46 @@ export default function Home() {
       });
 
       const data = await response.json();
-      
       if (data.status === "success") {
         setCoverLetter(data.cover_letter);
+      } else {
+        alert("Error: " + data.message);
+      }
+    } catch (error) {
+      console.error("Cover Letter Error:", error);
+    } finally {
+      setIsGeneratingLetter(false);
+    }
+  };
+
+  // NEW: Function to ask the backend for a custom study plan
+  const handleGenerateStudyPlan = async () => {
+    const missingSkills = results?.resume_metrics?.missing_skills || [];
+    if (missingSkills.length === 0) {
+      alert("You have no missing skills! You are perfectly qualified. 🎉");
+      return;
+    }
+
+    setIsGeneratingPlan(true);
+    try {
+      const response = await fetch("http://localhost:8000/api/study-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // We send the missing skills as JSON, exactly how your Python backend expects it!
+        body: JSON.stringify({ missing_skills: missingSkills }),
+      });
+
+      const data = await response.json();
+      if (data.status === "success") {
+        setStudyPlan(data.study_plan);
       } else {
         alert("Backend returned an error: " + data.message);
       }
     } catch (error) {
-      console.error("Cover Letter Error:", error);
-      alert("Could not generate the cover letter. Check your backend!");
+      console.error("Study Plan Error:", error);
+      alert("Could not generate the study plan. Check your backend!");
     } finally {
-      setIsGeneratingLetter(false);
+      setIsGeneratingPlan(false);
     }
   };
 
@@ -141,52 +166,19 @@ export default function Home() {
           <form className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  GitHub Username
-                </label>
-                <input
-                  type="text"
-                  value={githubUsername}
-                  onChange={(e) => setGithubUsername(e.target.value)}
-                  className="block w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
-                  placeholder="e.g., Farhan8012"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-1">GitHub Username</label>
+                <input type="text" value={githubUsername} onChange={(e) => setGithubUsername(e.target.value)} className="block w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition" placeholder="e.g., Farhan8012" />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Upload Resume (PDF)
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                  className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 cursor-pointer transition"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Upload Resume (PDF)</label>
+                <input type="file" accept=".pdf" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 cursor-pointer transition" />
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Job Description
-              </label>
-              <textarea
-                rows={4}
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
-                placeholder="Paste the requirements of the job you are applying for here..."
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Job Description</label>
+              <textarea rows={4} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} className="block w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition" placeholder="Paste the requirements of the job you are applying for here..." />
             </div>
-
-            <button
-              type="button"
-              onClick={handleAnalyze}
-              disabled={isLoading}
-              className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white transition-all ${
-                isLoading ? "bg-blue-400 cursor-not-allowed animate-pulse" : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"
-              }`}
-            >
+            <button type="button" onClick={handleAnalyze} disabled={isLoading} className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white transition-all ${isLoading ? "bg-blue-400 cursor-not-allowed animate-pulse" : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"}`}>
               {isLoading ? "🧠 Analyzing Profile..." : "Analyze Profile ✨"}
             </button>
           </form>
@@ -197,17 +189,8 @@ export default function Home() {
           <div className="bg-white shadow-2xl rounded-2xl p-8 border border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
-              <h2 className="text-3xl font-extrabold text-gray-900">
-                Evaluation Results 🎯
-              </h2>
-              
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-                className={`flex items-center gap-2 py-2 px-4 rounded-lg font-bold text-white shadow-sm transition-all ${
-                  isDownloading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-800 hover:bg-gray-900 hover:shadow-md"
-                }`}
-              >
+              <h2 className="text-3xl font-extrabold text-gray-900">Evaluation Results 🎯</h2>
+              <button onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-lg font-bold text-white shadow-sm transition-all ${isDownloading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-800 hover:bg-gray-900 hover:shadow-md"}`}>
                 {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
               </button>
             </div>
@@ -227,101 +210,85 @@ export default function Home() {
             {/* Skills Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
-                <h3 className="text-lg font-bold text-green-700 mb-3 flex items-center">
-                  ✅ Matched Skills
-                </h3>
+                <h3 className="text-lg font-bold text-green-700 mb-3 flex items-center">✅ Matched Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {results.resume_metrics?.matched_skills?.map((skill: string, index: number) => (
-                    <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                      {skill}
-                    </span>
+                    <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">{skill}</span>
                   )) || <span className="text-gray-500 italic">None found</span>}
                 </div>
               </div>
               
               <div>
-                <h3 className="text-lg font-bold text-red-700 mb-3 flex items-center">
-                  ⚠️ Missing Skills
-                </h3>
+                <h3 className="text-lg font-bold text-red-700 mb-3 flex items-center">⚠️ Missing Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {results.resume_metrics?.missing_skills?.map((skill: string, index: number) => (
-                    <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-                      {skill}
-                    </span>
+                    <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">{skill}</span>
                   )) || <span className="text-gray-500 italic">None found</span>}
                 </div>
+                {/* NEW: Generate Study Plan Button placed directly under missing skills! */}
+                {(results.resume_metrics?.missing_skills?.length || 0) > 0 && (
+                  <button onClick={handleGenerateStudyPlan} disabled={isGeneratingPlan} className={`mt-4 py-2 px-4 text-sm rounded-lg font-bold text-white shadow-sm transition-all ${isGeneratingPlan ? "bg-teal-400 cursor-not-allowed animate-pulse" : "bg-teal-600 hover:bg-teal-700 hover:shadow-md"}`}>
+                    {isGeneratingPlan ? "📚 Building Roadmap..." : "Generate Study Plan 📚"}
+                  </button>
+                )}
               </div>
             </div>
 
             {/* AI Scorecard Paragraph */}
             <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                🤖 AI Scorecard
-              </h3>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {results.resume_metrics?.ai_scorecard || "No scorecard generated."}
-              </p>
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">🤖 AI Scorecard</h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{results.resume_metrics?.ai_scorecard || "No scorecard generated."}</p>
             </div>
 
             {/* GITHUB METRICS SECTION */}
             <div className="mt-12 pt-10 border-t border-gray-200">
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
-                GitHub Profile Analysis 🐙
-              </h2>
-              
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">GitHub Profile Analysis 🐙</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
                   <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
-                  <span className="text-6xl font-black text-white mt-3">
-                    {results.github_metrics?.total_repos !== undefined ? results.github_metrics.total_repos : "N/A"}
-                  </span>
+                  <span className="text-6xl font-black text-white mt-3">{results.github_metrics?.total_repos !== undefined ? results.github_metrics.total_repos : "N/A"}</span>
                 </div>
-
                 <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
                   <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Top Languages</span>
                   <div className="flex flex-wrap justify-center gap-2 mt-4">
                     {results.github_metrics?.top_languages?.length > 0 ? (
                       results.github_metrics.top_languages.map((lang: string, idx: number) => (
-                        <span key={idx} className="px-4 py-1.5 bg-gray-800 text-blue-400 rounded-full text-sm font-bold border border-gray-700">
-                          {lang}
-                        </span>
+                        <span key={idx} className="px-4 py-1.5 bg-gray-800 text-blue-400 rounded-full text-sm font-bold border border-gray-700">{lang}</span>
                       ))
-                    ) : (
-                      <span className="text-gray-500 italic mt-2">No top languages found</span>
-                    )}
+                    ) : <span className="text-gray-500 italic mt-2">No top languages found</span>}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* --- NEW: COVER LETTER SECTION --- */}
+            {/* COVER LETTER SECTION */}
             <div className="mt-12 pt-10 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <h2 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-                  Auto-Draft Cover Letter ✉️
-                </h2>
-                <button
-                  onClick={handleGenerateCoverLetter}
-                  disabled={isGeneratingLetter}
-                  className={`py-2 px-6 rounded-lg font-bold text-white shadow-sm transition-all ${
-                    isGeneratingLetter ? "bg-purple-400 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-700 hover:shadow-md"
-                  }`}
-                >
+                <h2 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">Auto-Draft Cover Letter ✉️</h2>
+                <button onClick={handleGenerateCoverLetter} disabled={isGeneratingLetter} className={`py-2 px-6 rounded-lg font-bold text-white shadow-sm transition-all ${isGeneratingLetter ? "bg-purple-400 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-700 hover:shadow-md"}`}>
                   {isGeneratingLetter ? "✍️ Drafting..." : "Generate Cover Letter"}
                 </button>
               </div>
-
               {coverLetter && (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                  <textarea
-                    className="w-full h-96 p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-gray-800 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y"
-                    value={coverLetter}
-                    onChange={(e) => setCoverLetter(e.target.value)}
-                  />
-                  <p className="text-sm text-gray-500 mt-2 text-right">Feel free to edit the text directly before copying!</p>
+                  <textarea className="w-full h-96 p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-gray-800 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y" value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} />
                 </div>
               )}
             </div>
+
+            {/* --- NEW: STUDY PLAN SECTION --- */}
+            {studyPlan && (
+              <div className="mt-12 pt-10 border-t border-gray-200 animate-in fade-in slide-in-from-top-4 duration-500">
+                <h2 className="text-3xl font-extrabold text-gray-900 mb-6 flex items-center gap-3">
+                  Your Custom Study Plan 🗺️
+                </h2>
+                <div className="bg-teal-50 rounded-xl p-8 border border-teal-200 shadow-inner">
+                  <div className="prose prose-teal max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
+                    {studyPlan}
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
