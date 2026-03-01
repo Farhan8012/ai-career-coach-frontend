@@ -1,5 +1,6 @@
 "use client"; 
 import { useState } from "react"; 
+import { motion } from "framer-motion"; // NEW: Importing the animation library!
 
 export default function Home() {
   const [githubUsername, setGithubUsername] = useState("");
@@ -13,7 +14,6 @@ export default function Home() {
   const [coverLetter, setCoverLetter] = useState<string | null>(null);
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
 
-  // NEW: States for the Study Plan feature
   const [studyPlan, setStudyPlan] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Home() {
     setIsLoading(true);
     setResults(null); 
     setCoverLetter(null); 
-    setStudyPlan(null); // Clear old study plan
+    setStudyPlan(null); 
 
     try {
       const formData = new FormData();
@@ -116,7 +116,6 @@ export default function Home() {
     }
   };
 
-  // NEW: Function to ask the backend for a custom study plan
   const handleGenerateStudyPlan = async () => {
     const missingSkills = results?.resume_metrics?.missing_skills || [];
     if (missingSkills.length === 0) {
@@ -129,7 +128,6 @@ export default function Home() {
       const response = await fetch("http://localhost:8000/api/study-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // We send the missing skills as JSON, exactly how your Python backend expects it!
         body: JSON.stringify({ missing_skills: missingSkills }),
       });
 
@@ -148,21 +146,31 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <div className="max-w-4xl mx-auto space-y-8">
         
-        {/* --- HEADER --- */}
-        <div className="text-center mb-12">
+        {/* --- ANIMATED HEADER --- */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-12"
+        >
           <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
             AI Career Coach
           </h1>
           <p className="mt-4 text-lg text-gray-600">
             Upload your resume and job description to get a personalized ATS evaluation and developer scorecard.
           </p>
-        </div>
+        </motion.div>
 
-        {/* --- MAIN INPUT CARD --- */}
-        <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100">
+        {/* --- ANIMATED MAIN INPUT CARD --- */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }} 
+          animate={{ opacity: 1, scale: 1 }} 
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100"
+        >
           <form className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -178,21 +186,33 @@ export default function Home() {
               <label className="block text-sm font-semibold text-gray-700 mb-1">Job Description</label>
               <textarea rows={4} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} className="block w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition" placeholder="Paste the requirements of the job you are applying for here..." />
             </div>
-            <button type="button" onClick={handleAnalyze} disabled={isLoading} className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white transition-all ${isLoading ? "bg-blue-400 cursor-not-allowed animate-pulse" : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"}`}>
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="button" 
+              onClick={handleAnalyze} 
+              disabled={isLoading} 
+              className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white transition-colors ${isLoading ? "bg-blue-400 cursor-not-allowed animate-pulse" : "bg-blue-600 hover:bg-blue-700"}`}
+            >
               {isLoading ? "🧠 Analyzing Profile..." : "Analyze Profile ✨"}
-            </button>
+            </motion.button>
           </form>
-        </div>
+        </motion.div>
 
-        {/* --- DYNAMIC RESULTS SECTION --- */}
+        {/* --- ANIMATED DYNAMIC RESULTS SECTION --- */}
         {results && (
-          <div className="bg-white shadow-2xl rounded-2xl p-8 border border-green-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.7, type: "spring", bounce: 0.3 }}
+            className="bg-white shadow-2xl rounded-2xl p-8 border border-green-100"
+          >
             
             <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
               <h2 className="text-3xl font-extrabold text-gray-900">Evaluation Results 🎯</h2>
-              <button onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-lg font-bold text-white shadow-sm transition-all ${isDownloading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-800 hover:bg-gray-900 hover:shadow-md"}`}>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-lg font-bold text-white shadow-sm transition-colors ${isDownloading ? "bg-gray-400 cursor-not-allowed" : "bg-gray-800 hover:bg-gray-900"}`}>
                 {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
-              </button>
+              </motion.button>
             </div>
 
             {/* Scores Row */}
@@ -213,7 +233,7 @@ export default function Home() {
                 <h3 className="text-lg font-bold text-green-700 mb-3 flex items-center">✅ Matched Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {results.resume_metrics?.matched_skills?.map((skill: string, index: number) => (
-                    <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">{skill}</span>
+                    <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">{skill}</motion.span>
                   )) || <span className="text-gray-500 italic">None found</span>}
                 </div>
               </div>
@@ -222,14 +242,13 @@ export default function Home() {
                 <h3 className="text-lg font-bold text-red-700 mb-3 flex items-center">⚠️ Missing Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {results.resume_metrics?.missing_skills?.map((skill: string, index: number) => (
-                    <span key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">{skill}</span>
+                    <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.05 }} key={index} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">{skill}</motion.span>
                   )) || <span className="text-gray-500 italic">None found</span>}
                 </div>
-                {/* NEW: Generate Study Plan Button placed directly under missing skills! */}
                 {(results.resume_metrics?.missing_skills?.length || 0) > 0 && (
-                  <button onClick={handleGenerateStudyPlan} disabled={isGeneratingPlan} className={`mt-4 py-2 px-4 text-sm rounded-lg font-bold text-white shadow-sm transition-all ${isGeneratingPlan ? "bg-teal-400 cursor-not-allowed animate-pulse" : "bg-teal-600 hover:bg-teal-700 hover:shadow-md"}`}>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleGenerateStudyPlan} disabled={isGeneratingPlan} className={`mt-4 py-2 px-4 text-sm rounded-lg font-bold text-white shadow-sm transition-colors ${isGeneratingPlan ? "bg-teal-400 cursor-not-allowed animate-pulse" : "bg-teal-600 hover:bg-teal-700"}`}>
                     {isGeneratingPlan ? "📚 Building Roadmap..." : "Generate Study Plan 📚"}
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </div>
@@ -244,11 +263,11 @@ export default function Home() {
             <div className="mt-12 pt-10 border-t border-gray-200">
               <h2 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">GitHub Profile Analysis 🐙</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
+                <motion.div whileHover={{ y: -5 }} className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                   <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
                   <span className="text-6xl font-black text-white mt-3">{results.github_metrics?.total_repos !== undefined ? results.github_metrics.total_repos : "N/A"}</span>
-                </div>
-                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg">
+                </motion.div>
+                <motion.div whileHover={{ y: -5 }} className="bg-gray-900 rounded-xl p-6 border border-gray-800 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                   <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Top Languages</span>
                   <div className="flex flex-wrap justify-center gap-2 mt-4">
                     {results.github_metrics?.top_languages?.length > 0 ? (
@@ -257,7 +276,7 @@ export default function Home() {
                       ))
                     ) : <span className="text-gray-500 italic mt-2">No top languages found</span>}
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
 
@@ -265,20 +284,20 @@ export default function Home() {
             <div className="mt-12 pt-10 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <h2 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">Auto-Draft Cover Letter ✉️</h2>
-                <button onClick={handleGenerateCoverLetter} disabled={isGeneratingLetter} className={`py-2 px-6 rounded-lg font-bold text-white shadow-sm transition-all ${isGeneratingLetter ? "bg-purple-400 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-700 hover:shadow-md"}`}>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleGenerateCoverLetter} disabled={isGeneratingLetter} className={`py-2 px-6 rounded-lg font-bold text-white shadow-sm transition-colors ${isGeneratingLetter ? "bg-purple-400 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-700"}`}>
                   {isGeneratingLetter ? "✍️ Drafting..." : "Generate Cover Letter"}
-                </button>
+                </motion.button>
               </div>
               {coverLetter && (
-                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-                  <textarea className="w-full h-96 p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-gray-800 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y" value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} />
-                </div>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.5 }}>
+                  <textarea className="w-full h-96 p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-gray-800 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y mt-4" value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} />
+                </motion.div>
               )}
             </div>
 
-            {/* --- NEW: STUDY PLAN SECTION --- */}
+            {/* STUDY PLAN SECTION */}
             {studyPlan && (
-              <div className="mt-12 pt-10 border-t border-gray-200 animate-in fade-in slide-in-from-top-4 duration-500">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mt-12 pt-10 border-t border-gray-200">
                 <h2 className="text-3xl font-extrabold text-gray-900 mb-6 flex items-center gap-3">
                   Your Custom Study Plan 🗺️
                 </h2>
@@ -287,10 +306,10 @@ export default function Home() {
                     {studyPlan}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
-          </div>
+          </motion.div>
         )}
 
       </div>
