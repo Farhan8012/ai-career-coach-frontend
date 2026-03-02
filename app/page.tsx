@@ -1,6 +1,32 @@
 "use client"; 
 import { useState } from "react"; 
-import { motion } from "framer-motion"; // NEW: Importing the animation library!
+import { motion } from "framer-motion";
+// NEW 3D IMPORTS:
+import { Canvas } from "@react-three/fiber";
+import { MeshDistortMaterial, Sphere, Float, OrbitControls } from "@react-three/drei";
+
+// NEW 3D COMPONENT: The morphing AI Core!
+function AIBrain() {
+  return (
+    <Canvas camera={{ position: [0, 0, 4] }}>
+      <ambientLight intensity={0.8} />
+      <directionalLight position={[2, 2, 5]} intensity={1.5} />
+      <OrbitControls enableZoom={false} />
+      <Float speed={2.5} rotationIntensity={1.5} floatIntensity={2}>
+        <Sphere args={[1.2, 64, 64]}>
+          <MeshDistortMaterial 
+            color="#6366f1" // Indigo color to match the theme
+            attach="material" 
+            distort={0.4} // How much it bubbles
+            speed={2}     // How fast it bubbles
+            roughness={0.1}
+            metalness={0.8}
+          />
+        </Sphere>
+      </Float>
+    </Canvas>
+  );
+}
 
 export default function Home() {
   const [githubUsername, setGithubUsername] = useState("");
@@ -149,13 +175,18 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <div className="max-w-4xl mx-auto space-y-8">
         
-        {/* --- ANIMATED HEADER --- */}
+        {/* --- ANIMATED HEADER & 3D BRAIN --- */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center mb-12"
+          className="text-center mb-12 relative"
         >
+          {/* 3D Canvas Box */}
+          <div className="h-64 w-full flex justify-center items-center cursor-grab active:cursor-grabbing mb-4">
+            <AIBrain />
+          </div>
+
           <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
             AI Career Coach
           </h1>
@@ -169,7 +200,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.95 }} 
           animate={{ opacity: 1, scale: 1 }} 
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100"
+          className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 relative z-10"
         >
           <form className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
