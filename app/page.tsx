@@ -34,7 +34,7 @@ export default function Home() {
       formData.append("job_description", jobDescription);
       formData.append("resume", resumeFile); 
 
-      const response = await fetch("http://localhost:8000/api/evaluate-candidate", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/evaluate-candidate`, {
         method: "POST",
         body: formData,
       });
@@ -58,7 +58,7 @@ export default function Home() {
     if (!results) return;
     setIsDownloading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/generate-pdf", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/generate-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ export default function Home() {
       formData.append("job_description", jobDescription);
       formData.append("resume", resumeFile);
 
-      const response = await fetch("http://localhost:8000/api/cover-letter", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/cover-letter`, {
         method: "POST",
         body: formData,
       });
@@ -125,7 +125,7 @@ export default function Home() {
 
     setIsGeneratingPlan(true);
     try {
-      const response = await fetch("http://localhost:8000/api/study-plan", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/study-plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ missing_skills: missingSkills }),
