@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 AI Career Coach (Full-Stack SaaS)
 
-## Getting Started
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Play_Now-8A2BE2?style=for-the-badge)](https://ai-career-coach-frontend-peach.vercel.app/)
+[![Backend Repo](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge)](https://github.com/Farhan8012/ai-career-coach-backend)
 
-First, run the development server:
+An intelligent, full-stack career acceleration platform that evaluates resumes, analyzes GitHub activity, and generates personalized study roadmaps using Generative AI. 
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## ✨ Features
+* **🔐 Secure Authentication:** Full user login/signup flow powered by Supabase.
+* **📄 Smart ATS Parsing:** Extracts and cleans PDF resume text to calculate semantic match scores against job descriptions.
+* **🐙 GitHub Profiler:** Automatically fetches live developer metrics (stars, languages, PRs) and generates an AI "Developer Scorecard."
+* **🗺️ Generative AI Roadmaps:** Leverages Google Gemini to identify missing technical skills and auto-generate a 5-day study plan to close the gap.
+* **🎨 Premium UI/UX:** Fully responsive, dark-mode glassmorphism interface built with Next.js and Tailwind CSS.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
+* **Frontend:** Next.js (React), Tailwind CSS, Framer Motion
+* **Backend:** Python, FastAPI, pdfplumber
+* **Database & Auth:** Supabase (PostgreSQL)
+* **AI Engine:** Google Gemini (gemini-2.5-flash)
+* **Deployment:** Vercel (Serverless Functions)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📸 Sneak Peek
+*(Add a screenshot of your beautiful dark-mode dashboard here!)*
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧠 The Architecture
+The platform utilizes a decoupled architecture. The Next.js frontend handles state management and user sessions, securely routing requests to the Python API. The backend uses pure-Python Jaccard Similarity algorithms for lightning-fast semantic matching to bypass heavy cloud deployment limits, while offloading complex generative tasks (like drafting Cover Letters) to the Gemini API.
