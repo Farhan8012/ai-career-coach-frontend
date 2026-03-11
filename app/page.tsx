@@ -1,6 +1,7 @@
 "use client"; 
 import { useState, useEffect } from "react"; 
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function Home() {
   // --- AUTHENTICATION STATE ---
@@ -302,6 +303,11 @@ export default function Home() {
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white shadow-sm transition-colors ${isDownloading ? "bg-gray-600 cursor-not-allowed" : "bg-white/10 hover:bg-white/20 border border-white/10"}`}>
                     {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
                   </motion.button>
+                  <Link href="/interview">
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 transition-colors">
+                      💻 Practice Interview
+                    </motion.button>
+                  </Link>
                 </div>
 
                 {/* Scores Row */}
