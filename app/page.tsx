@@ -74,7 +74,7 @@ export default function Home() {
 
   const handleLogout = () => {
     localStorage.removeItem("supabase_token");
-    sessionStorage.removeItem("dashboard_results"); // Clear cached results
+    sessionStorage.removeItem("dashboard_results"); 
     sessionStorage.removeItem("dashboard_github");
     setIsLoggedIn(false);
     setResults(null);
@@ -104,7 +104,6 @@ export default function Home() {
       
       if (data.status === "success") {
         setResults(data.candidate_evaluation);
-        // Save to browser session so it survives navigation
         sessionStorage.setItem("dashboard_results", JSON.stringify(data.candidate_evaluation));
         sessionStorage.setItem("dashboard_github", githubUsername);
       } else {
@@ -271,7 +270,7 @@ export default function Home() {
             </p>
           </motion.div>
         ) : (
-          /* MAIN DASHBOARD SCREEN (Only visible if logged in) */
+          /* MAIN DASHBOARD SCREEN */
           <>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
@@ -374,13 +373,13 @@ export default function Home() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <motion.div whileHover={{ y: -5 }} className="bg-black/40 rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                       <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
-                      <span className="text-6xl font-black text-white mt-3">{results.github_metrics?.total_repos !== undefined ? results.github_metrics.total_repos : "N/A"}</span>
+                      <span className="text-6xl font-black text-white mt-3">{results.github_metrics?.public_repos !== undefined ? results.github_metrics.public_repos : "N/A"}</span>
                     </motion.div>
                     <motion.div whileHover={{ y: -5 }} className="bg-black/40 rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                       <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Top Languages</span>
                       <div className="flex flex-wrap justify-center gap-2 mt-4">
-                        {results.github_metrics?.top_languages?.length > 0 ? (
-                          results.github_metrics.top_languages.map((lang: string, idx: number) => (
+                        {results.github_metrics?.top_languages && Object.keys(results.github_metrics.top_languages).length > 0 ? (
+                          Object.keys(results.github_metrics.top_languages).map((lang: string, idx: number) => (
                             <span key={idx} className="px-4 py-1.5 bg-white/5 text-blue-300 rounded-full text-sm font-bold border border-white/10">{lang}</span>
                           ))
                         ) : <span className="text-gray-500 italic mt-2">No top languages found</span>}
