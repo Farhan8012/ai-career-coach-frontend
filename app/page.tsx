@@ -26,10 +26,17 @@ export default function Home() {
   const [studyPlan, setStudyPlan] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
-  // Check if already logged in (keeps user logged in after refresh)
+  // Check if already logged in AND restore saved dashboard data
   useEffect(() => {
     const token = localStorage.getItem("supabase_token");
     if (token) setIsLoggedIn(true);
+
+    // Restore results if we are coming back from the Interview Room
+    const savedResults = sessionStorage.getItem("dashboard_results");
+    const savedGithub = sessionStorage.getItem("dashboard_github");
+    
+    if (savedResults) setResults(JSON.parse(savedResults));
+    if (savedGithub) setGithubUsername(savedGithub);
   }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -48,22 +55,13 @@ export default function Home() {
       const data = await response.json();
       
       if (data.status === "success") {
-        if (isLoginMode) {
-          localStorage.setItem("supabase_token", data.access_token);
-          setIsLoggedIn(true);
-        } else {
-          alert("Account created successfully! Please log in. 🎉");
-          setIsLoginMode(true);
-        }
+        setResults(data.candidate_evaluation);
+        // Save to browser session so it survives navigation
+        sessionStorage.setItem("dashboard_results", JSON.stringify(data.candidate_evaluation));
+        sessionStorage.setItem("dashboard_github", githubUsername);
       } else {
-        alert(data.message);
+        alert("Backend returned an error: " + data.message);
       }
-    } catch (error) {
-      alert("Error connecting to server.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("supabase_token");
