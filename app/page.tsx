@@ -55,16 +55,27 @@ export default function Home() {
       const data = await response.json();
       
       if (data.status === "success") {
-        setResults(data.candidate_evaluation);
-        // Save to browser session so it survives navigation
-        sessionStorage.setItem("dashboard_results", JSON.stringify(data.candidate_evaluation));
-        sessionStorage.setItem("dashboard_github", githubUsername);
+        if (isLoginMode) {
+          localStorage.setItem("supabase_token", data.access_token);
+          setIsLoggedIn(true);
+        } else {
+          alert("Account created successfully! Please log in. 🎉");
+          setIsLoginMode(true);
+        }
       } else {
-        alert("Backend returned an error: " + data.message);
+        alert(data.message);
       }
+    } catch (error) {
+      alert("Error connecting to server.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("supabase_token");
+    sessionStorage.removeItem("dashboard_results"); // Clear cached results
+    sessionStorage.removeItem("dashboard_github");
     setIsLoggedIn(false);
     setResults(null);
   };
@@ -93,6 +104,9 @@ export default function Home() {
       
       if (data.status === "success") {
         setResults(data.candidate_evaluation);
+        // Save to browser session so it survives navigation
+        sessionStorage.setItem("dashboard_results", JSON.stringify(data.candidate_evaluation));
+        sessionStorage.setItem("dashboard_github", githubUsername);
       } else {
         alert("Backend returned an error: " + data.message);
       }
@@ -298,14 +312,16 @@ export default function Home() {
               >
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b border-white/10 pb-4 gap-4">
                   <h2 className="text-3xl font-extrabold text-white">Evaluation Results 🎯</h2>
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white shadow-sm transition-colors ${isDownloading ? "bg-gray-600 cursor-not-allowed" : "bg-white/10 hover:bg-white/20 border border-white/10"}`}>
-                    {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
-                  </motion.button>
-                  <Link href="/interview">
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 transition-colors">
-                      💻 Practice Interview
+                  <div className="flex gap-4">
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleDownloadPDF} disabled={isDownloading} className={`flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white shadow-sm transition-colors ${isDownloading ? "bg-gray-600 cursor-not-allowed" : "bg-white/10 hover:bg-white/20 border border-white/10"}`}>
+                      {isDownloading ? "⏳ Generating..." : "📄 Download PDF Report"}
                     </motion.button>
-                  </Link>
+                    <Link href="/interview">
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 transition-colors">
+                        💻 Practice Interview
+                      </motion.button>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Scores Row */}
