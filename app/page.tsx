@@ -31,7 +31,6 @@ export default function Home() {
     const token = localStorage.getItem("supabase_token");
     if (token) setIsLoggedIn(true);
 
-    // Restore results if we are coming back from the Interview Room
     const savedResults = sessionStorage.getItem("dashboard_results");
     const savedGithub = sessionStorage.getItem("dashboard_github");
     
@@ -129,7 +128,7 @@ export default function Home() {
           semantic_score: results.resume_metrics?.semantic_score || 0,
           matched_skills: results.resume_metrics?.matched_skills || [],
           missing_skills: results.resume_metrics?.missing_skills || [],
-          ai_scorecard: results.resume_metrics?.ai_scorecard || "No scorecard generated."
+          ai_scorecard: results.github_metrics?.ai_scorecard || "No scorecard generated."
         }),
       });
 
@@ -363,14 +362,16 @@ export default function Home() {
 
                 {/* AI Scorecard Paragraph */}
                 <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">🤖 AI Scorecard</h3>
-                  <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{results.resume_metrics?.ai_scorecard || "No scorecard generated."}</p>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">🤖 AI Developer Persona</h3>
+                  <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{results.github_metrics?.ai_scorecard || "No persona generated."}</p>
                 </div>
 
                 {/* GITHUB METRICS SECTION */}
                 <div className="mt-12 pt-10 border-t border-white/10">
                   <h2 className="text-3xl font-extrabold text-white mb-8 flex items-center gap-3">GitHub Profile Analysis 🐙</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Top Level Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <motion.div whileHover={{ y: -5 }} className="bg-black/40 rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                       <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
                       <span className="text-6xl font-black text-white mt-3">{results.github_metrics?.public_repos !== undefined ? results.github_metrics.public_repos : "N/A"}</span>
@@ -386,6 +387,38 @@ export default function Home() {
                       </div>
                     </motion.div>
                   </div>
+
+                  {/* BRAND NEW: TOP PROJECTS GRID */}
+                  {results.github_metrics?.repositories && results.github_metrics.repositories.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">🏆 Top Projects</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {results.github_metrics.repositories.map((repo: any, idx: number) => (
+                          <a key={idx} href={repo.url} target="_blank" rel="noopener noreferrer" className="block group">
+                            <motion.div 
+                              whileHover={{ y: -5 }} 
+                              className="h-full bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 transition-all duration-300 group-hover:border-purple-500/50 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] flex flex-col"
+                            >
+                              <div className="flex justify-between items-start mb-3 gap-2">
+                                <h4 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors line-clamp-1">{repo.name}</h4>
+                                <span className="flex items-center gap-1 text-sm font-semibold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-md shrink-0">
+                                  ⭐ {repo.stars}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-400 mb-4 flex-grow line-clamp-3">
+                                {repo.description}
+                              </p>
+                              <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/10">
+                                <span className="w-3 h-3 rounded-full bg-blue-400"></span>
+                                <span className="text-xs font-medium text-gray-300">{repo.language}</span>
+                              </div>
+                            </motion.div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
 
                 {/* COVER LETTER SECTION */}
