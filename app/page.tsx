@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react"; 
 import { motion } from "framer-motion";
 import Link from "next/link";
+// BRAND NEW: Import the Recharts library components
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Home() {
   // --- AUTHENTICATION STATE ---
@@ -11,11 +13,12 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   
-  // BRAND NEW: Profile State
+  // --- PROFILE & HISTORY STATE ---
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [scoreHistory, setScoreHistory] = useState<any[]>([]); // BRAND NEW: Holds the chart data
 
   // --- APP STATE ---
   const [githubUsername, setGithubUsername] = useState("");
@@ -32,6 +35,25 @@ export default function Home() {
   const [studyPlan, setStudyPlan] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
+  // BRAND NEW: Fetch the user's historical scores for the chart
+  const fetchHistory = async (userEmail: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/history/${userEmail}`);
+      const data = await response.json();
+      if (data.status === "success" && data.data) {
+        // Format the database rows into data points for Recharts
+        const formattedData = data.data.map((item: any, index: number) => ({
+          attempt: `Scan ${index + 1}`,
+          ATS: item.match_score,
+          Semantic: item.semantic_score
+        }));
+        setScoreHistory(formattedData);
+      }
+    } catch (error) {
+      console.error("Could not fetch history:", error);
+    }
+  };
+
   // Fetch the user's custom profile data
   const fetchUserProfile = async (token: string) => {
     try {
@@ -41,6 +63,7 @@ export default function Home() {
       const data = await response.json();
       if (data.status === "success") {
         setUserProfile(data);
+        fetchHistory(data.user_email); // Fetch history as soon as we know their email!
       }
     } catch (error) {
       console.error("Could not fetch profile:", error);
@@ -52,7 +75,7 @@ export default function Home() {
     const token = localStorage.getItem("supabase_token");
     if (token) {
       setIsLoggedIn(true);
-      fetchUserProfile(token); // Grab the name and role if logged in!
+      fetchUserProfile(token);
     }
 
     const savedResults = sessionStorage.getItem("dashboard_results");
@@ -68,7 +91,6 @@ export default function Home() {
     
     const endpoint = isLoginMode ? "/api/login" : "/api/signup";
     
-    // Switch between the basic login payload and the upgraded signup payload
     const payload = isLoginMode 
       ? { email, password } 
       : { email, password, first_name: firstName, last_name: lastName, target_role: targetRole };
@@ -108,6 +130,7 @@ export default function Home() {
     setIsLoggedIn(false);
     setResults(null);
     setUserProfile(null);
+    setScoreHistory([]);
   };
 
   const handleAnalyze = async () => {
@@ -133,9 +156,27 @@ export default function Home() {
       const data = await response.json();
       
       if (data.status === "success") {
-        setResults(data.candidate_evaluation);
-        sessionStorage.setItem("dashboard_results", JSON.stringify(data.candidate_evaluation));
+        const evalData = data.candidate_evaluation;
+        setResults(evalData);
+        sessionStorage.setItem("dashboard_results", JSON.stringify(evalData));
         sessionStorage.setItem("dashboard_github", githubUsername);
+
+        // BRAND NEW: Save this specific run to the database history!
+        if (userProfile?.user_email) {
+          await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/history`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_email: userProfile.user_email,
+              match_score: evalData.resume_metrics.ats_score,
+              semantic_score: evalData.resume_metrics.semantic_score,
+              missing_skills: evalData.resume_metrics.missing_skills
+            })
+          });
+          // Re-fetch the history so the chart updates instantly
+          fetchHistory(userProfile.user_email);
+        }
+
       } else {
         alert("Backend returned an error: " + data.message);
       }
@@ -181,58 +222,37 @@ export default function Home() {
     }
   };
 
-  const handleGenerateCoverLetter = async () => {
+  const handleGenerateCoverLetter = async () => { /* ... existing logic ... */
     if (!resumeFile || !jobDescription) return;
     setIsGeneratingLetter(true);
     try {
       const formData = new FormData();
       formData.append("job_description", jobDescription);
       formData.append("resume", resumeFile);
-
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/cover-letter`, {
-        method: "POST",
-        body: formData,
+        method: "POST", body: formData,
       });
-
       const data = await response.json();
-      if (data.status === "success") {
-        setCoverLetter(data.cover_letter);
-      } else {
-        alert("Error: " + data.message);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsGeneratingLetter(false);
-    }
+      if (data.status === "success") setCoverLetter(data.cover_letter);
+      else alert("Error: " + data.message);
+    } catch (error) { console.error(error); } 
+    finally { setIsGeneratingLetter(false); }
   };
 
-  const handleGenerateStudyPlan = async () => {
+  const handleGenerateStudyPlan = async () => { /* ... existing logic ... */
     const missingSkills = results?.resume_metrics?.missing_skills || [];
-    if (missingSkills.length === 0) {
-      alert("You have no missing skills! You are perfectly qualified. 🎉");
-      return;
-    }
-
+    if (missingSkills.length === 0) return;
     setIsGeneratingPlan(true);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/study-plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ missing_skills: missingSkills }),
       });
-
       const data = await response.json();
-      if (data.status === "success") {
-        setStudyPlan(data.study_plan);
-      } else {
-        alert("Backend returned an error: " + data.message);
-      }
-    } catch (error) {
-      alert("Could not generate the study plan.");
-    } finally {
-      setIsGeneratingPlan(false);
-    }
+      if (data.status === "success") setStudyPlan(data.study_plan);
+      else alert("Backend returned an error: " + data.message);
+    } catch (error) { alert("Could not generate the study plan."); } 
+    finally { setIsGeneratingPlan(false); }
   };
 
   return (
@@ -255,7 +275,6 @@ export default function Home() {
             AI Career Coach
           </h1>
           <p className="mt-4 text-lg text-gray-400 font-light pointer-events-none">
-            {/* BRAND NEW: Dynamic Greeting */}
             {isLoggedIn && userProfile
               ? `Welcome back, ${userProfile.first_name}. Let's land that ${userProfile.target_role} role.`
               : isLoggedIn
@@ -281,8 +300,6 @@ export default function Home() {
               {isLoginMode ? "Secure Login" : "Create Account"}
             </h2>
             <form onSubmit={handleAuth} className="space-y-4">
-              
-              {/* BRAND NEW: Extra fields for Sign Up only */}
               {!isLoginMode && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -301,7 +318,6 @@ export default function Home() {
                   </div>
                 </>
               )}
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
                 <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition" placeholder="you@domain.com" />
@@ -357,6 +373,32 @@ export default function Home() {
                 </motion.button>
               </form>
             </motion.div>
+
+            {/* BRAND NEW: ATS PROGRESS CHART */}
+            {scoreHistory.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} 
+                transition={{ duration: 0.7, type: "spring", bounce: 0.3 }}
+                className="bg-[#0a0a0a]/80 backdrop-blur-2xl shadow-2xl rounded-3xl p-8 border border-white/10"
+              >
+                <h2 className="text-3xl font-extrabold text-white mb-6">Your Progress 📈</h2>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={scoreHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" vertical={false} />
+                      <XAxis dataKey="attempt" stroke="#a0aec0" tick={{ fill: '#a0aec0' }} />
+                      <YAxis stroke="#a0aec0" tick={{ fill: '#a0aec0' }} domain={[0, 100]} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1a202c', border: '1px solid #ffffff20', borderRadius: '12px', color: '#fff' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Line type="monotone" dataKey="ATS" stroke="#a855f7" strokeWidth={4} dot={{ r: 6, fill: '#a855f7' }} activeDot={{ r: 8 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-gray-400 text-sm mt-4 text-center">Track how your ATS score improves with each resume iteration.</p>
+              </motion.div>
+            )}
 
             {/* DYNAMIC RESULTS SECTION */}
             {results && (
@@ -427,7 +469,6 @@ export default function Home() {
                 <div className="mt-12 pt-10 border-t border-white/10">
                   <h2 className="text-3xl font-extrabold text-white mb-8 flex items-center gap-3">GitHub Profile Analysis 🐙</h2>
                   
-                  {/* Top Level Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <motion.div whileHover={{ y: -5 }} className="bg-black/40 rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                       <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
@@ -477,36 +518,6 @@ export default function Home() {
                   )}
 
                 </div>
-
-                {/* COVER LETTER SECTION */}
-                <div className="mt-12 pt-10 border-t border-white/10">
-                  <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <h2 className="text-3xl font-extrabold text-white flex items-center gap-3">Auto-Draft Cover Letter ✉️</h2>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleGenerateCoverLetter} disabled={isGeneratingLetter} className={`py-2 px-6 rounded-xl font-bold text-white shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-colors ${isGeneratingLetter ? "bg-purple-500/50 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-500"}`}>
-                      {isGeneratingLetter ? "✍️ Drafting..." : "Generate Cover Letter"}
-                    </motion.button>
-                  </div>
-                  {coverLetter && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.5 }}>
-                      <textarea className="w-full h-96 p-6 bg-purple-900/10 border border-purple-500/30 rounded-2xl text-gray-200 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y mt-4 backdrop-blur-md" value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} />
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* STUDY PLAN SECTION */}
-                {studyPlan && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mt-12 pt-10 border-t border-white/10">
-                    <h2 className="text-3xl font-extrabold text-white mb-6 flex items-center gap-3">
-                      Your Custom Study Plan 🗺️
-                    </h2>
-                    <div className="bg-teal-900/10 rounded-2xl p-8 border border-teal-500/30 shadow-inner backdrop-blur-md">
-                      <div className="prose prose-invert prose-teal max-w-none text-gray-300 whitespace-pre-wrap leading-relaxed">
-                        {studyPlan}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
               </motion.div>
             )}
           </>
