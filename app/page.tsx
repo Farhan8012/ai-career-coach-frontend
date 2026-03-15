@@ -10,6 +10,12 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  
+  // BRAND NEW: Profile State
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [targetRole, setTargetRole] = useState("");
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // --- APP STATE ---
   const [githubUsername, setGithubUsername] = useState("");
@@ -26,10 +32,28 @@ export default function Home() {
   const [studyPlan, setStudyPlan] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
+  // Fetch the user's custom profile data
+  const fetchUserProfile = async (token: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/me`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.status === "success") {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error("Could not fetch profile:", error);
+    }
+  };
+
   // Check if already logged in AND restore saved dashboard data
   useEffect(() => {
     const token = localStorage.getItem("supabase_token");
-    if (token) setIsLoggedIn(true);
+    if (token) {
+      setIsLoggedIn(true);
+      fetchUserProfile(token); // Grab the name and role if logged in!
+    }
 
     const savedResults = sessionStorage.getItem("dashboard_results");
     const savedGithub = sessionStorage.getItem("dashboard_github");
@@ -44,11 +68,16 @@ export default function Home() {
     
     const endpoint = isLoginMode ? "/api/login" : "/api/signup";
     
+    // Switch between the basic login payload and the upgraded signup payload
+    const payload = isLoginMode 
+      ? { email, password } 
+      : { email, password, first_name: firstName, last_name: lastName, target_role: targetRole };
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -57,8 +86,9 @@ export default function Home() {
         if (isLoginMode) {
           localStorage.setItem("supabase_token", data.access_token);
           setIsLoggedIn(true);
+          fetchUserProfile(data.access_token);
         } else {
-          alert("Account created successfully! Please log in. 🎉");
+          alert(`Account created successfully! Welcome aboard, ${firstName}! 🎉 Please log in.`);
           setIsLoginMode(true);
         }
       } else {
@@ -77,6 +107,7 @@ export default function Home() {
     sessionStorage.removeItem("dashboard_github");
     setIsLoggedIn(false);
     setResults(null);
+    setUserProfile(null);
   };
 
   const handleAnalyze = async () => {
@@ -224,7 +255,12 @@ export default function Home() {
             AI Career Coach
           </h1>
           <p className="mt-4 text-lg text-gray-400 font-light pointer-events-none">
-            {isLoggedIn ? "Welcome back. Let's analyze your next opportunity." : "Sign in to access personalized ATS evaluation."}
+            {/* BRAND NEW: Dynamic Greeting */}
+            {isLoggedIn && userProfile
+              ? `Welcome back, ${userProfile.first_name}. Let's land that ${userProfile.target_role} role.`
+              : isLoggedIn
+              ? "Welcome back. Let's analyze your next opportunity."
+              : "Sign in to access personalized ATS evaluation."}
           </p>
           {isLoggedIn && (
             <button onClick={handleLogout} className="mt-4 text-sm text-purple-400 hover:text-purple-300 transition-colors">
@@ -245,6 +281,27 @@ export default function Home() {
               {isLoginMode ? "Secure Login" : "Create Account"}
             </h2>
             <form onSubmit={handleAuth} className="space-y-4">
+              
+              {/* BRAND NEW: Extra fields for Sign Up only */}
+              {!isLoginMode && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">First Name</label>
+                      <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 outline-none transition" placeholder="John" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
+                      <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 outline-none transition" placeholder="Doe" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Target Role</label>
+                    <input type="text" required value={targetRole} onChange={(e) => setTargetRole(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 outline-none transition" placeholder="e.g., AI Engineer" />
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
                 <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition" placeholder="you@domain.com" />
@@ -388,7 +445,7 @@ export default function Home() {
                     </motion.div>
                   </div>
 
-                  {/* BRAND NEW: TOP PROJECTS GRID */}
+                  {/* TOP PROJECTS GRID */}
                   {results.github_metrics?.repositories && results.github_metrics.repositories.length > 0 && (
                     <div className="mt-8">
                       <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">🏆 Top Projects</h3>
