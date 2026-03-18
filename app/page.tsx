@@ -18,9 +18,7 @@ export default function Home() {
   const [targetRole, setTargetRole] = useState("");
   const [userProfile, setUserProfile] = useState<any>(null);
   const [scoreHistory, setScoreHistory] = useState<any[]>([]); 
-
-  // BRAND NEW: KANBAN STATE
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]); // Kanban State
 
   // --- APP STATE ---
   const [githubUsername, setGithubUsername] = useState("");
@@ -37,7 +35,7 @@ export default function Home() {
   const [studyPlan, setStudyPlan] = useState<string | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
-  // BRAND NEW: Fetch saved job applications from Supabase
+  // --- FETCH FUNCTIONS ---
   const fetchApplications = async (token: string) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/applications`, {
@@ -78,7 +76,7 @@ export default function Home() {
       if (data.status === "success") {
         setUserProfile(data);
         fetchHistory(data.user_email); 
-        fetchApplications(token); // Grab the Kanban board data!
+        fetchApplications(token); 
       }
     } catch (error) {
       console.error("Could not fetch profile:", error);
@@ -99,9 +97,11 @@ export default function Home() {
     if (savedGithub) setGithubUsername(savedGithub);
   }, []);
 
+  // --- HANDLERS ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
+    
     const endpoint = isLoginMode ? "/api/login" : "/api/signup";
     const payload = isLoginMode 
       ? { email, password } 
@@ -111,7 +111,9 @@ export default function Home() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
+
       const data = await response.json();
+      
       if (data.status === "success") {
         if (isLoginMode) {
           localStorage.setItem("supabase_token", data.access_token);
@@ -121,9 +123,14 @@ export default function Home() {
           alert(`Account created successfully! Welcome aboard, ${firstName}! 🎉 Please log in.`);
           setIsLoginMode(true);
         }
-      } else alert(data.message);
-    } catch (error) { alert("Error connecting to server."); } 
-    finally { setAuthLoading(false); }
+      } else {
+        alert(data.message);
+      }
+    } catch (error) {
+      alert("Error connecting to server.");
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -134,7 +141,10 @@ export default function Home() {
   };
 
   const handleAnalyze = async () => {
-    if (!resumeFile) return alert("Please upload a PDF resume first! 📄");
+    if (!resumeFile) {
+      alert("Please upload a PDF resume first! 📄");
+      return;
+    }
     setIsLoading(true); setResults(null); setCoverLetter(null); setStudyPlan(null); 
 
     try {
@@ -142,9 +152,11 @@ export default function Home() {
       formData.append("github_username", githubUsername);
       formData.append("job_description", jobDescription);
       formData.append("resume", resumeFile); 
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/evaluate-candidate`, {
         method: "POST", body: formData,
       });
+
       const data = await response.json();
       
       if (data.status === "success") {
@@ -160,12 +172,17 @@ export default function Home() {
           });
           fetchHistory(userProfile.user_email);
         }
-      } else alert("Backend returned an error: " + data.message);
-    } catch (error) { alert("Uh oh! Could not reach the backend."); } 
-    finally { setIsLoading(false); }
+      } else {
+        alert("Backend returned an error: " + data.message);
+      }
+    } catch (error) {
+      alert("Uh oh! Could not reach the backend.");
+    } finally {
+      setIsLoading(false); 
+    }
   };
 
-  const handleDownloadPDF = async () => { /* ... existing logic ... */
+  const handleDownloadPDF = async () => {
     if (!results) return;
     setIsDownloading(true);
     try {
@@ -177,84 +194,77 @@ export default function Home() {
       const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = `${githubUsername || "Candidate"}_AI_Scorecard.pdf`;
       document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
-    } catch (error) { alert("Could not download the PDF."); } 
-    finally { setIsDownloading(false); }
+    } catch (error) {
+      alert("Could not download the PDF.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
-  const handleGenerateCoverLetter = async () => { /* ... existing logic ... */
+  const handleGenerateCoverLetter = async () => {
     if (!resumeFile || !jobDescription) return;
     setIsGeneratingLetter(true);
     try {
-      const formData = new FormData(); formData.append("job_description", jobDescription); formData.append("resume", resumeFile);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/cover-letter`, { method: "POST", body: formData });
+      const formData = new FormData();
+      formData.append("job_description", jobDescription);
+      formData.append("resume", resumeFile);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/cover-letter`, {
+        method: "POST", body: formData,
+      });
       const data = await response.json();
       if (data.status === "success") setCoverLetter(data.cover_letter);
+      else alert("Error: " + data.message);
     } catch (error) { console.error(error); } 
     finally { setIsGeneratingLetter(false); }
   };
 
-  const handleGenerateStudyPlan = async () => { /* ... existing logic ... */
+  const handleGenerateStudyPlan = async () => {
     const missingSkills = results?.resume_metrics?.missing_skills || [];
     if (missingSkills.length === 0) return;
     setIsGeneratingPlan(true);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/study-plan`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ missing_skills: missingSkills }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ missing_skills: missingSkills }),
       });
       const data = await response.json();
       if (data.status === "success") setStudyPlan(data.study_plan);
+      else alert("Backend returned an error: " + data.message);
     } catch (error) { alert("Could not generate the study plan."); } 
     finally { setIsGeneratingPlan(false); }
   };
 
-  // BRAND NEW: Save a job to the Kanban board
+  // --- KANBAN LOGIC ---
   const handleSaveToTracker = async () => {
     const token = localStorage.getItem("supabase_token");
     if (!token) return alert("Please log in to save jobs.");
-    
     const companyName = window.prompt("What company is this for?");
     const jobTitle = window.prompt("What is the exact job title?");
-    
-    if (!companyName || !jobTitle) return; // User cancelled
+    if (!companyName || !jobTitle) return; 
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/applications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ company_name: companyName, job_title: jobTitle, match_score: results?.resume_metrics?.ats_score || 0 })
       });
       const data = await response.json();
       if (data.status === "success") {
         alert("Job saved to your tracker! 📌");
-        fetchApplications(token); // Refresh the board
+        fetchApplications(token); 
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
-  // BRAND NEW: Drag and Drop Logic
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData("app_id", id);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Necessary to allow dropping!
-  };
-
+  const handleDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("app_id", id); };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
     const id = e.dataTransfer.getData("app_id");
     const token = localStorage.getItem("supabase_token");
-    
-    // Optimistic UI Update (Change it on screen instantly)
     setApplications(prev => prev.map(app => app.id === id ? { ...app, status: newStatus } : app));
-
-    // Send the change to the database in the background
     if (token) {
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/applications/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        method: "PATCH", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
     }
@@ -265,6 +275,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#050505] text-white py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-purple-500/30">
       
+      {/* PURE CSS AMBIENT GLOW BACKGROUND */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -287,8 +298,9 @@ export default function Home() {
           )}
         </motion.div>
 
-        {/* --- AUTHENTICATION SCREEN --- */}
+        {/* --- CONDITIONAL RENDERING: LOGIN OR DASHBOARD --- */}
         {!isLoggedIn ? (
+          /* AUTHENTICATION SCREEN */
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md mx-auto bg-[#0a0a0a]/60 backdrop-blur-2xl shadow-2xl rounded-3xl p-8 border border-white/10">
             <h2 className="text-2xl font-bold text-white mb-6 text-center">{isLoginMode ? "Secure Login" : "Create Account"}</h2>
             <form onSubmit={handleAuth} className="space-y-4">
@@ -328,7 +340,7 @@ export default function Home() {
             </p>
           </motion.div>
         ) : (
-          /* --- MAIN DASHBOARD SCREEN --- */
+          /* MAIN DASHBOARD SCREEN */
           <>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0a0a0a]/60 backdrop-blur-2xl shadow-2xl rounded-3xl p-8 border border-white/10">
               <form className="space-y-6">
@@ -344,44 +356,32 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Job Description</label>
-                  <textarea rows={4} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 outline-none transition" placeholder="Paste the requirements..." />
+                  <textarea rows={4} value={jobDescription} onChange={(e) => setJobDescription(e.target.value)} className="block w-full rounded-xl bg-black/50 border border-white/10 px-4 py-3 text-white placeholder-gray-600 focus:border-purple-500 outline-none transition" placeholder="Paste the requirements of the job you are applying for here..." />
                 </div>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={handleAnalyze} disabled={isLoading} className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)] text-lg font-bold text-white transition-all ${isLoading ? "bg-purple-500/50 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-500"}`}>
+                <motion.button type="button" onClick={handleAnalyze} disabled={isLoading} className={`w-full mt-4 flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)] text-lg font-bold text-white transition-all ${isLoading ? "bg-purple-500/50 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-500"}`}>
                   {isLoading ? "🧠 Analyzing Profile..." : "Analyze Profile ✨"}
                 </motion.button>
               </form>
             </motion.div>
 
-            {/* BRAND NEW: THE KANBAN BOARD */}
+            {/* BRAND NEW: KANBAN BOARD */}
             {applications.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="bg-[#0a0a0a]/80 backdrop-blur-2xl shadow-2xl rounded-3xl p-8 border border-white/10">
                 <h2 className="text-3xl font-extrabold text-white mb-6">Application Tracker 📋</h2>
                 <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-purple-500/50 scrollbar-track-black/50">
                   {kanbanColumns.map((col) => (
-                    <div 
-                      key={col} 
-                      onDragOver={handleDragOver} 
-                      onDrop={(e) => handleDrop(e, col)} 
-                      className="w-72 min-w-[18rem] bg-white/5 rounded-2xl p-5 border border-white/10 flex-shrink-0"
-                    >
+                    <div key={col} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, col)} className="w-72 min-w-[18rem] bg-white/5 rounded-2xl p-5 border border-white/10 flex-shrink-0">
                       <h3 className="text-white font-bold mb-4 flex items-center justify-between">
                         {col} 
                         <span className="bg-black/50 text-gray-400 text-xs px-2 py-1 rounded-full">{applications.filter(a => a.status === col).length}</span>
                       </h3>
                       <div className="space-y-4 min-h-[100px]">
                         {applications.filter(app => app.status === col).map(app => (
-                          <div 
-                            key={app.id} 
-                            draggable 
-                            onDragStart={(e) => handleDragStart(e, app.id)} 
-                            className="bg-black/60 border border-white/10 p-4 rounded-xl cursor-grab active:cursor-grabbing hover:border-purple-500/50 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-                          >
+                          <div key={app.id} draggable onDragStart={(e) => handleDragStart(e, app.id)} className="bg-black/60 border border-white/10 p-4 rounded-xl cursor-grab active:cursor-grabbing hover:border-purple-500/50 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]">
                             <div className="text-sm font-bold text-white line-clamp-1">{app.job_title}</div>
                             <div className="text-xs text-gray-400 mt-1">{app.company_name}</div>
                             <div className="mt-3 flex justify-end">
-                              <span className="bg-purple-500/20 text-purple-300 text-xs font-bold px-2 py-1 rounded-md border border-purple-500/30">
-                                {app.match_score}% Match
-                              </span>
+                              <span className="bg-purple-500/20 text-purple-300 text-xs font-bold px-2 py-1 rounded-md border border-purple-500/30">{app.match_score}% Match</span>
                             </div>
                           </div>
                         ))}
@@ -407,6 +407,7 @@ export default function Home() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                <p className="text-gray-400 text-sm mt-4 text-center">Track how your ATS score improves with each resume iteration.</p>
               </motion.div>
             )}
 
@@ -416,7 +417,6 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8 border-b border-white/10 pb-4 gap-4">
                   <h2 className="text-3xl font-extrabold text-white">Evaluation Results 🎯</h2>
                   <div className="flex flex-wrap gap-3">
-                    {/* BRAND NEW: Save to Tracker Button! */}
                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSaveToTracker} className="flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-white bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 transition-colors">
                       📌 Save to Tracker
                     </motion.button>
@@ -453,6 +453,7 @@ export default function Home() {
                       )) || <span className="text-gray-500 italic">None found</span>}
                     </div>
                   </div>
+                  
                   <div>
                     <h3 className="text-lg font-bold text-red-400 mb-3 flex items-center">⚠️ Missing Skills</h3>
                     <div className="flex flex-wrap gap-2">
@@ -477,6 +478,7 @@ export default function Home() {
                 {/* GITHUB METRICS SECTION */}
                 <div className="mt-12 pt-10 border-t border-white/10">
                   <h2 className="text-3xl font-extrabold text-white mb-8 flex items-center gap-3">GitHub Profile Analysis 🐙</h2>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <motion.div whileHover={{ y: -5 }} className="bg-black/40 rounded-2xl p-6 border border-white/10 flex flex-col items-center justify-center text-center shadow-lg transition-transform">
                       <span className="text-gray-400 font-semibold text-sm uppercase tracking-wider">Public Repositories</span>
@@ -493,7 +495,63 @@ export default function Home() {
                       </div>
                     </motion.div>
                   </div>
+
+                  {/* TOP PROJECTS GRID */}
+                  {results.github_metrics?.repositories && results.github_metrics.repositories.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">🏆 Top Projects</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {results.github_metrics.repositories.map((repo: any, idx: number) => (
+                          <a key={idx} href={repo.url} target="_blank" rel="noopener noreferrer" className="block group">
+                            <motion.div whileHover={{ y: -5 }} className="h-full bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 transition-all duration-300 group-hover:border-purple-500/50 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] flex flex-col">
+                              <div className="flex justify-between items-start mb-3 gap-2">
+                                <h4 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors line-clamp-1">{repo.name}</h4>
+                                <span className="flex items-center gap-1 text-sm font-semibold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-md shrink-0">
+                                  ⭐ {repo.stars}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-400 mb-4 flex-grow line-clamp-3">{repo.description}</p>
+                              <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/10">
+                                <span className="w-3 h-3 rounded-full bg-blue-400"></span>
+                                <span className="text-xs font-medium text-gray-300">{repo.language}</span>
+                              </div>
+                            </motion.div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* COVER LETTER SECTION */}
+                <div className="mt-12 pt-10 border-t border-white/10">
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 className="text-3xl font-extrabold text-white flex items-center gap-3">Auto-Draft Cover Letter ✉️</h2>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleGenerateCoverLetter} disabled={isGeneratingLetter} className={`py-2 px-6 rounded-xl font-bold text-white shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-colors ${isGeneratingLetter ? "bg-purple-500/50 cursor-not-allowed animate-pulse" : "bg-purple-600 hover:bg-purple-500"}`}>
+                      {isGeneratingLetter ? "✍️ Drafting..." : "Generate Cover Letter"}
+                    </motion.button>
+                  </div>
+                  {coverLetter && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.5 }}>
+                      <textarea className="w-full h-96 p-6 bg-purple-900/10 border border-purple-500/30 rounded-2xl text-gray-200 leading-relaxed focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-y mt-4 backdrop-blur-md" value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} />
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* STUDY PLAN SECTION */}
+                {studyPlan && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mt-12 pt-10 border-t border-white/10">
+                    <h2 className="text-3xl font-extrabold text-white mb-6 flex items-center gap-3">
+                      Your Custom Study Plan 🗺️
+                    </h2>
+                    <div className="bg-teal-900/10 rounded-2xl p-8 border border-teal-500/30 shadow-inner backdrop-blur-md">
+                      <div className="prose prose-invert prose-teal max-w-none text-gray-300 whitespace-pre-wrap leading-relaxed">
+                        {studyPlan}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
               </motion.div>
             )}
           </>
