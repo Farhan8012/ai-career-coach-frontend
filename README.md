@@ -24,3 +24,16 @@ An intelligent, full-stack career acceleration platform that evaluates resumes, 
 
 ## 🧠 The Architecture
 The platform utilizes a decoupled architecture. The Next.js frontend handles state management and user sessions, securely routing requests to the Python API. The backend uses pure-Python Jaccard Similarity algorithms for lightning-fast semantic matching to bypass heavy cloud deployment limits, while offloading complex generative tasks (like drafting Cover Letters) to the Gemini API.
+
+### Frontend Setup
+```bash
+git clone <your-frontend-repo-url>
+cd ai-career-coach-frontend
+npm install
+npm run dev
+
+Backend Setup (Requires separate repo)
+git clone <your-backend-repo-url>
+cd ai-career-coach-backend
+pip install -r requirements.txt
+uvicorn api:app --reload
